@@ -4,13 +4,13 @@
 For the galileo you need to use a linux distibution.
 * Python
 * Python-nfcpy
-* Mosquitto
+* Paho MQTT Client
 
 On the server side you will need.
 * Python
 * Python-nfcpy
 * Python-pygame
-* Mosquitto
+* Paho MQTT Client
 * NodeJS
 * MongoDB
 

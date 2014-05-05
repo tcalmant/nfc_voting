@@ -1,7 +1,7 @@
 import nfc
 import time
 import sys
-import mosquitto
+import paho.mqtt.client as mosquitto
 
 def connected(tag):
   try:

@@ -1,6 +1,6 @@
 import sys, pygame
 import math
-import mosquitto
+import paho.mqtt.client as mosquitto
 from time import sleep
 import requests
 import json
