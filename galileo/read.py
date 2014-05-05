@@ -3,6 +3,28 @@ import time
 import sys
 import paho.mqtt.client as mosquitto
 
+def nfc_device_lookup(nfc_dev=(0x04E6, 0x5591)):
+    """
+    Looks for known NFC devices
+    
+    :param nfc_dev: A USB device identification tuple
+                    (vendor, product)
+    :return: A list of (bus, device) tuples for connected devices
+    """
+    # python-usb
+    import usb
+  
+    # For each USB bus
+    for bus in usb.busses():
+	# For each device
+	for dev in bus.devices:
+	    # Check if the device matches the USB identifier
+	    usb_ident = (dev.idVendor, dev.idProduct)
+	    if usb_ident == NFC_DEV:
+		found.append(usb_ident)
+
+    return found
+
 def connected(tag):
   try:
     id_vote = tag.ndef.message[0].data
