@@ -10,8 +10,8 @@ NFC vote machine
 # Configuration constants
 import constants
 
-# Paho MQTT client
-import paho.mqtt.client as paho
+# Pelix MQTT client (based on Paho)
+import pelix.misc.mqtt_client as mqtt
 
 # libusb Python binding
 import usb
@@ -348,7 +348,7 @@ class VotingMachine(object):
         :param host: MQTT server host
         :param port: MQTT server port
         """
-        self.__mqtt = paho.Client()
+        self.__mqtt = mqtt.MqttClient(mqtt.MqttClient.generate_id("nfcvote-"))
         self.__mqtt.connect(host, port)
 
 
