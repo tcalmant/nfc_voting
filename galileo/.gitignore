@@ -1,2 +1,6 @@
+# Symbolic link to nfcpy installation
 nfc
+
+# Vote configuration
+vote.ini
 
