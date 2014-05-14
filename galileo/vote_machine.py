@@ -16,13 +16,6 @@ import signal
 import threading
 import time
 
-try:
-    # Python 2
-    import ConfigParser as configparser
-except ImportError:
-    # Python 3
-    import configparser
-
 # ------------------------------------------------------------------------------
 
 def nfc_device_lookup(nfc_dev=(0x04E6, 0x5591)):
@@ -412,6 +405,12 @@ def main(config):
 if __name__ == '__main__':
     # Script entry point
     import sys
+    try:
+        # Python 2
+        import ConfigParser as configparser
+    except ImportError:
+        # Python 3
+        import configparser
 
     # Read configuration
     config = configparser.RawConfigParser()
