@@ -178,7 +178,7 @@ class VoteLED(object):
             if pin is None:
                 raise IndexError()
         except (KeyError, IndexError):
-            print("No green LED for {0}".format(value))
+            print("No red LED for {0}".format(value))
         else:
             self._led_change(pin, state)
 
