@@ -1,0 +1,24 @@
+{
+    "name": "nfc-voting-server",
+    "version": "0.3.0",
+    "author": "Twane",
+    "description": "A server collecting votes for an NFC voting machine",
+    "scripts": {
+        "start": "node serv.js"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/nodejitsu/http-server.git"
+    },
+    "keywords": [
+        "nfc",
+        "mqtt",
+        "server"
+    ],
+    "dependencies": {
+        "mongoose": "*",
+        "mqtt": "*",
+        "express": "<4.0",
+        "express-restify-mongoose": "*"
+    }
+}
