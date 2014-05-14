@@ -34,6 +34,10 @@ MQTT_HOST_DEFAULT = "localhost"
 MQTT_PORT = "port"
 MQTT_PORT_DEFAULT = 1883
 
+# ... MQTT topic
+MQTT_TOPIC = "topic"
+MQTT_TOPIC_DEFAULT = "vote"
+
 # ... values in the vote (comma-separated list)
 VOTE_VALUES = "values"
 VOTE_VALUES_DEFAULT = (0, 1, 2)

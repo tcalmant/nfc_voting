@@ -136,11 +136,14 @@ class ConfigurationMenu(object):
                                constants.MQTT_HOST_DEFAULT)
         port = self.config.getint(constants.SECTION_MQTT, constants.MQTT_PORT,
                                   constants.MQTT_PORT_DEFAULT)
+        topic = self.config.get(constants.SECTION_MQTT, constants.MQTT_TOPIC,
+                                constants.MQTT_TOPIC_DEFAULT)
 
         # Print menu
         choices = ((0, self.main_screen_name),
                    (1, "Change host ({0})".format(host)),
-                   (2, "Change port ({0})".format(port)))
+                   (2, "Change port ({0})".format(port)),
+                   (3, "Change topic ({0})".format(topic)))
         choice = self.__print_int_menu(choices)
 
         if choice == 0:
@@ -151,7 +154,7 @@ class ConfigurationMenu(object):
             # Change host
             host = prompt("MQTT Server Host ({0}): " \
                           .format(constants.MQTT_HOST_DEFAULT)).strip() \
-                    or constants.MQTT_HOST_DEFAULT
+                      or constants.MQTT_HOST_DEFAULT
 
             self.config.set(constants.SECTION_MQTT, constants.MQTT_HOST, host)
 
@@ -166,6 +169,14 @@ class ConfigurationMenu(object):
             else:
                 self.config.set(constants.SECTION_MQTT, constants.MQTT_PORT,
                                 port)
+
+        elif choice == 3:
+            # Change topic
+            topic = prompt("MQTT Topic ({0}): "\
+                           .format(constants.MQTT_TOPIC_DEFAULT)) \
+                        or constants.MQTT_TOPIC_DEFAULT
+
+            self.config.set(constants.SECTION_MQTT, constants.MQTT_TOPIC, topic)
 
         return True
 

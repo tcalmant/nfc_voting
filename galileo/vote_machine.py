@@ -307,7 +307,7 @@ class VotingMachine(object):
     """
     Voting machine engine
     """
-    def __init__(self):
+    def __init__(self, mqtt_topic='vote'):
         """
         Sets up members
         """
@@ -316,6 +316,9 @@ class VotingMachine(object):
 
         # MQTT Client connection
         self.__mqtt = None
+
+        # MQTT vote topic
+        self.__mqtt_topic = mqtt_topic
 
         # LEDs handling
         self.__leds = VoteLED()
@@ -436,9 +439,9 @@ class VotingMachine(object):
             # Format the content
             payload = "{0} {1}".format(id_vote[-4:], value)
 
-            # TODO: Send the message
-            # self.__mqtt.publish('vote', payload)
+            # Publish the message
             print(">>> Publishing vote: {0}".format(payload))
+            self.__mqtt.publish(self.__mqtt_topic, payload, qos=2)
 
             # Wait a bit
             state = True
@@ -535,9 +538,11 @@ def main(config):
                           constants.MQTT_HOST_DEFAULT)
     port = config.getint(constants.SECTION_MQTT, constants.MQTT_PORT,
                          constants.MQTT_PORT_DEFAULT)
+    topic = config.get(constants.SECTION_MQTT, constants.MQTT_TOPIC,
+                       constants.MQTT_TOPIC_DEFAULT)
 
     # Prepare the vote machine
-    vote = VotingMachine()
+    vote = VotingMachine(topic)
     try:
         vote.connect_mqtt(host, port)
 
