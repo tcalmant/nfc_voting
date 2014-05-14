@@ -450,8 +450,8 @@ class VotingMachine(object):
                 self.__leds.valid(value, state)
                 time.sleep(.1)
 
-            # Light down the LED
-            self.__leds.valid(value, False)
+            # Light up the LED
+            self.__leds.valid(value, True)
 
         except Exception as ex:
             logging.exception("Error handling vote: %s", ex)
@@ -466,8 +466,9 @@ class VotingMachine(object):
                 time.sleep(.1)
                 state = not state
 
-            # Light up red LED
-            self.__leds.invalid(value, True)
+            # Light down red LED
+            self.__leds.invalid(value, False)
+            self.__leds.valid(value, True)
 
 
 
