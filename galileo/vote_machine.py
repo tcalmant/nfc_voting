@@ -7,6 +7,9 @@ NFC vote machine
 :license: Eclipse Public License 1.0
 """
 
+# Configuration constants
+import constants
+
 # Paho MQTT client
 import paho.mqtt.client as paho
 
@@ -18,7 +21,7 @@ import nfc
 
 # Standard library
 import functools
-import signal
+import logging
 import threading
 import time
 
@@ -41,7 +44,7 @@ def nfc_device_lookup(nfc_dev=(0x04E6, 0x5591)):
             # Check if the device matches the USB identifier
             usb_ident = (dev.idVendor, dev.idProduct)
             if usb_ident == nfc_dev:
-                matching.append(usb_ident)
+                matching.append((bus.dirname, dev.filename))
 
     return matching
 
@@ -147,7 +150,8 @@ class VoteLED(object):
         else:
             state_str = "DOWN"
 
-        print('[[ {0} pin {1} ]]'.format(pin, state_str))
+        logging.debug("[[ pin %s %s ]]", pin, state_str)
+
 
     def valid(self, value, state):
         """
@@ -160,8 +164,11 @@ class VoteLED(object):
             pin = self.pins[value][0]
             if pin is None:
                 raise IndexError()
+
         except (KeyError, IndexError):
-            print("No green LED for {0}".format(value))
+            # Green LED is missing
+            pass
+
         else:
             self._led_change(pin, state)
 
@@ -176,10 +183,123 @@ class VoteLED(object):
             pin = self.pins[value][1]
             if pin is None:
                 raise IndexError()
+
         except (KeyError, IndexError):
-            print("No red LED for {0}".format(value))
+            # Red LED is missing
+            pass
+
         else:
             self._led_change(pin, state)
+
+# ------------------------------------------------------------------------------
+
+class VoteDevice(object):
+    """
+    Wraps the NFC code
+    """
+    def __init__(self, busName, deviceName):
+        """
+        Sets up the device
+        """
+        # Compute device name
+        self.__name = 'usb:{0}:{1}'.format(busName, deviceName)
+
+        # Logger
+        self.__logger = logging.getLogger("NFC-{0}".format(self.__name))
+
+        # Prepare the device
+        self.__logger.info("Preparing device %s", self.__name)
+        self.nfc = nfc.ContactlessFrontend(self.__name)
+
+        # Stop event
+        self.__event = threading.Event()
+
+        # Listening thread
+        self.__thread = None
+
+        # Callback
+        self.on_tag = None
+
+
+    def close(self):
+        """
+        Closes the device
+        """
+        # Stop the thread
+        self.stop()
+
+        # Close the frontend
+        self.__event.set()
+        self.nfc.close()
+        self.nfc = None
+
+
+    def __on_connect(self, tag):
+        """
+        A tag has been detected
+        """
+        if self.on_tag is not None:
+            try:
+                self.on_tag(tag)
+
+            except Exception as ex:
+                # Avoid exception to go up to NFCpy
+                self.__logger.exception("Error handling tag: %s", ex)
+
+        return True
+
+
+    def __nfc_terminate(self):
+        """
+        Method to force the "connect" method of NFCpy to return
+        """
+        return self.__event.is_set()
+
+
+    def listen(self):
+        """
+        Waits for tags in another thread
+        """
+        self.__thread = threading.Thread(name="NFCListen-{0}" \
+                                         .format(self.__name),
+                                         target=self.wait_for_tag,
+                                         args=(True,))
+        self.__thread.start()
+
+
+    def stop(self):
+        """
+        Stops the listening thread
+        """
+        # Set the event
+        self.__event.set()
+
+        if self.__thread is not None and self.__thread.is_alive():
+            # Wait for the thread to stop
+            self.__thread.join()
+
+        # Clear references
+        self.__thread = None
+
+
+    def wait_for_tag(self, loop=False):
+        """
+        Waits for a tag
+        """
+        # Clear the event
+        self.__event.clear()
+
+        # Blocking call
+        if loop:
+            # Loop until stop() is called
+            while not self.__nfc_terminate():
+                self.nfc.connect(rdwr={'on-connect': self.__on_connect},
+                                 terminate=self.__nfc_terminate)
+
+        else:
+            # Single call
+            self.nfc.connect(rdwr={'on-connect': self.__on_connect},
+                                 terminate=self.__nfc_terminate)
 
 # ------------------------------------------------------------------------------
 
@@ -200,11 +320,15 @@ class VotingMachine(object):
         # LEDs handling
         self.__leds = VoteLED()
 
+
     def close(self):
         """
         Closes the MQTT connection and releases NFC devices
         """
-        # TODO: Clean up NFC
+        # Clean up NFC
+        for clf in self.__nfc_devs:
+            clf.close()
+        del self.__nfc_devs[:]
 
         # Clean up MQTT
         self.__mqtt.disconnect()
@@ -224,6 +348,7 @@ class VotingMachine(object):
         self.__mqtt = paho.Client()
         self.__mqtt.connect(host, port)
 
+
     def setup_leds(self, value_leds):
         """
         Sets up LEDs GPIO
@@ -231,6 +356,7 @@ class VotingMachine(object):
         :param value_leds: Vote value -> LED GPIO pins
         """
         self.__leds.setup(value_leds)
+
 
     def associate_nfc(self, vote_values):
         """
@@ -245,14 +371,25 @@ class VotingMachine(object):
             self.__leds.invalid(value, False)
 
         # Get all known devices
-        remaining_devices = nfc_device_lookup()
-        if len(remaining_devices) < len(vote_values):
+        found_devices = nfc_device_lookup()
+        if len(found_devices) < len(vote_values):
             raise ValueError("Not enough NFC devices found")
 
-        # vote value -> (busId, deviceId)
+        # Prepare them
+        remaining_devices = [VoteDevice(busName, devName)
+                             for busName, devName in found_devices]
+
+        # Store them
+        self.__nfc_devs = remaining_devices[:]
+
+        # vote value -> VoteDevice
         value_device = {}
 
-        for value in vote_values:
+        for idx, value in enumerate(vote_values):
+            if idx > 0:
+                # Wait a bit so that the user removes the tag from the device
+                time.sleep(.5)
+
             print('Associating value {0}...'.format(value))
             # Lights up LED
             print('... Lighting up LED')
@@ -278,13 +415,9 @@ class VotingMachine(object):
         # Prepare callbacks
         for value, device in value_device.items():
             # Prepare the NFC front end
-            clf = nfc.ContactlessFrontend('usb:{0}:{1}'.format(device[0],
-                                                               device[1]))
-            clf.connect(rdwr={'on-connect':
-                              functools.partial(self.__on_vote_tag, value)})
+            device.on_tag = functools.partial(self.__on_vote_tag, value)
+            device.listen()
 
-            # Store it
-            self.__nfc_devs.append(clf)
 
     def __on_vote_tag(self, value, tag):
         """
@@ -296,21 +429,44 @@ class VotingMachine(object):
         # Light up the LED
         self.__leds.valid(value, True)
 
-        # Get vote ID
-        id_vote = tag.ndef.message[0].data
+        try:
+            # Get vote ID
+            id_vote = tag.ndef.message[0].data
 
-        # Format the content
-        payload = "{0} {1}".format(id_vote[-4:], value)
+            # Format the content
+            payload = "{0} {1}".format(id_vote[-4:], value)
 
-        # TODO: Send the message
-        # self.__mqtt.publish('vote', payload)
-        print(">>> Publishing vote: {0}".format(payload))
+            # TODO: Send the message
+            # self.__mqtt.publish('vote', payload)
+            print(">>> Publishing vote: {0}".format(payload))
 
-        # Wait a bit
-        time.sleep(2)
+            # Wait a bit
+            state = True
+            for _ in range(20):
+                # ACK LED
+                self.__leds.valid(value, state)
+                time.sleep(.1)
 
-        # Light down the LED
-        self.__leds.valid(value, False)
+            # Light down the LED
+            self.__leds.valid(value, False)
+
+        except Exception as ex:
+            logging.exception("Error handling vote: %s", ex)
+
+            # Light down green LED
+            self.__leds.valid(value, False)
+
+            # Warning LED
+            state = True
+            for _ in range(10):
+                self.__leds.invalid(value, state)
+                time.sleep(.1)
+                state = not state
+
+            # Light up red LED
+            self.__leds.invalid(value, True)
+
+
 
     def __on_association_tag(self, event, device, tag):
         """
@@ -322,34 +478,33 @@ class VotingMachine(object):
         """
         event.set(device)
 
+
     def __wait_tag(self, devices):
         """
         Returns the first device which receives a tag (used for association)
 
-        :param devices: A list of (busId, deviceId) tuples
+        :param devices: A list of VoteDevice objects
         :return: The first device which detected a tag
         """
+        if len(devices) == 1:
+            # Only one device available, avoid the test
+            return devices[0]
+
         # Tag reception event
         event = DataEvent()
 
-        # List of ContactlessFrontend objects in use
-        frontends = []
-
         for device in devices:
             # Prepare the front ends
-            clf = nfc.ContactlessFrontend('usb:{0}:{1}'.format(device[0],
-                                                               device[1]))
-            clf.connect(rdwr={'on-connect':
-                              functools.partial(self.__on_association_tag,
-                                                event, device)})
-            frontends.append(clf)
+            device.on_tag = functools.partial(self.__on_association_tag,
+                                              event, device)
+            device.listen()
 
         # Wait for a tag...
         event.wait()
 
-        # Clean up all front ends
-        for clf in frontends:
-            clf.close()
+        # Stop listening to tags
+        for device in devices:
+            device.stop()
 
         # Return the tagged device
         return event.get_data()
@@ -360,11 +515,11 @@ def main(config):
     """
     Entry point
 
-    :param config: A ConfigParser object
+    :param config: A Configuration object
     """
     # Get vote values
-    values = [value.strip()
-              for value in config.get('vote', 'values').split(',')]
+    values = config.getlist(constants.SECTION_VOTE, constants.VOTE_VALUES,
+                            constants.VOTE_VALUES_DEFAULT)
     if not values:
         print('No values given in configuration')
         return 1
@@ -372,55 +527,63 @@ def main(config):
     # Get LEDs configuration
     value_leds = {}
     for value in values:
-        value_leds[value] = tuple(int(pin.strip()) \
-                          for pin in config.get('leds', value, '').split(','))
+        value_leds[value] = tuple(int(pin) for pin \
+                    in config.getlist(constants.SECTION_LEDS, str(value), []))
+
+    # Get MQTT configuration
+    host = config.get(constants.SECTION_MQTT, constants.MQTT_HOST,
+                          constants.MQTT_HOST_DEFAULT)
+    port = config.getint(constants.SECTION_MQTT, constants.MQTT_PORT,
+                         constants.MQTT_PORT_DEFAULT)
 
     # Prepare the vote machine
     vote = VotingMachine()
-    vote.connect_mqtt(config.get('mqtt', 'host', 'localhost'),
-                      config.getint('mqtt', 'port', 1883))
+    try:
+        vote.connect_mqtt(host, port)
+
+    except Exception as ex:
+        print("Error connecting to the MQTT server: {0}".format(ex))
+        return 2
+
+
+    # Setup LEDs
     vote.setup_leds(value_leds)
 
     # Associate tags
-    vote.associate_nfc(values)
+    try:
+        vote.associate_nfc(values)
+
+    except ValueError as ex:
+        # Error associating NFC devices
+        print("Error associating NFC devices: {0}".format(ex))
+        return 3
 
     # Prepare the event we wait to stop
     event = threading.Event()
 
-    # Register to signals
-    def on_signal(signum):
-        # Got a signal
-        event.set()
-
-    for signum in (signal.SIGINT, signal.SIGTERM, signal.SIGQUIT):
-        try:
-            signal.signal(signum, on_signal)
-        except ValueError:
-            # Unknown signal (Windows...)
-            pass
-
     # Wait until the end of the vote (signal or KeyboardInterrupt)
     try:
-        event.wait()
+        while not event.is_set():
+            event.wait(.5)
     except KeyboardInterrupt:
         print('Keyboard interruption... stopping')
 
     # Clean up
     vote.close()
+    return 0
+
+# ------------------------------------------------------------------------------
 
 if __name__ == '__main__':
     # Script entry point
     import sys
-    try:
-        # Python 2
-        import ConfigParser as configparser
-    except ImportError:
-        # Python 3
-        import configparser
+
+    # Setup logs
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger("nfc").setLevel(logging.CRITICAL)
 
     # Read configuration
-    config = configparser.RawConfigParser()
-    config.read("vote.ini")
+    config = constants.Configuration()
 
     # Run the vote machine
     sys.exit(main(config))
