@@ -1,5 +1,11 @@
 #!/usr/bin/python
 # -- Content-Encoding: UTF-8 --
+"""
+NFC vote machine
+
+:authors: Antoine GERVAIL, Amine ZIAN­CHERIF, Thomas CALMANT
+:license: Eclipse Public License 1.0
+"""
 
 # Paho MQTT client
 import paho.mqtt.client as paho
