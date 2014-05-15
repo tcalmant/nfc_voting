@@ -307,7 +307,7 @@ class VotingMachine(object):
     """
     Voting machine engine
     """
-    def __init__(self, mqtt_topic='vote'):
+    def __init__(self):
         """
         Sets up members
         """
@@ -317,8 +317,9 @@ class VotingMachine(object):
         # MQTT Client connection
         self.__mqtt = None
 
-        # MQTT vote topic
-        self.__mqtt_topic = mqtt_topic
+        # Vote messages configuration
+        self.__mqtt_topic = constants.MQTT_TOPIC_DEFAULT
+        self.__mqtt_format = constants.MQTT_PAYLOAD_DEFAULT
 
         # LEDs handling
         self.__leds = VoteLED()
@@ -341,13 +342,21 @@ class VotingMachine(object):
         self.__leds.close()
 
 
-    def connect_mqtt(self, host, port=1883):
+    def connect_mqtt(self, host, port, topic, payload_format):
         """
         Connects the MQTT client to the server
 
         :param host: MQTT server host
         :param port: MQTT server port
+        :param topic: Vote topic
+        :param payload_format: Format of the message payload
+                               (in string.format syntax)
         """
+        # Store configuration
+        self.__mqtt_topic = topic
+        self.__mqtt_format = payload_format
+
+        # Connect the server
         self.__mqtt = mqtt.MqttClient(mqtt.MqttClient.generate_id("nfcvote-"))
         self.__mqtt.connect(host, port)
 
@@ -433,11 +442,25 @@ class VotingMachine(object):
         self.__leds.valid(value, True)
 
         try:
-            # Get vote ID
-            id_vote = tag.ndef.message[0].data
+            # Prepare payload variables
+            variables = {  # Time stamp, in seconds
+                         "timestamp": int(time.time()),
+                         # Tag UID
+                         "nfc_uid": str(tag.uid).encode("hex"),
+                         # Vote value
+                         "value": value,
+                         }
+
+            try:
+                # Get vote ID (deprecated)
+                variables['vote_id'] = tag.ndef.message[0].data[-4]
+
+            except Exception as ex:
+                logging.error("Error reading TAG data: %s", ex)
+                variables['vote_id'] = "ERROR"
 
             # Format the content
-            payload = "{0} {1}".format(id_vote[-4:], value)
+            payload = self.__mqtt_format.format(**variables)
 
             # Publish the message
             print(">>> Publishing vote: {0}".format(payload))
@@ -541,11 +564,13 @@ def main(config):
                          constants.MQTT_PORT_DEFAULT)
     topic = config.get(constants.SECTION_MQTT, constants.MQTT_TOPIC,
                        constants.MQTT_TOPIC_DEFAULT)
+    payload_format = config.get(constants.SECTION_MQTT, constants.MQTT_PAYLOAD,
+                       constants.MQTT_PAYLOAD_DEFAULT)
 
     # Prepare the vote machine
-    vote = VotingMachine(topic)
+    vote = VotingMachine()
     try:
-        vote.connect_mqtt(host, port)
+        vote.connect_mqtt(host, port, topic, payload_format)
 
     except Exception as ex:
         print("Error connecting to the MQTT server: {0}".format(ex))

@@ -138,12 +138,16 @@ class ConfigurationMenu(object):
                                   constants.MQTT_PORT_DEFAULT)
         topic = self.config.get(constants.SECTION_MQTT, constants.MQTT_TOPIC,
                                 constants.MQTT_TOPIC_DEFAULT)
+        payload = self.config.get(constants.SECTION_MQTT,
+                                  constants.MQTT_PAYLOAD,
+                                  constants.MQTT_PAYLOAD_DEFAULT)
 
         # Print menu
         choices = ((0, self.main_screen_name),
                    (1, "Change host ({0})".format(host)),
                    (2, "Change port ({0})".format(port)),
-                   (3, "Change topic ({0})".format(topic)))
+                   (3, "Change topic ({0})".format(topic)),
+                   (4, "Change payload ({0})".format(payload)))
         choice = self.__print_int_menu(choices)
 
         if choice == 0:
@@ -177,6 +181,22 @@ class ConfigurationMenu(object):
                         or constants.MQTT_TOPIC_DEFAULT
 
             self.config.set(constants.SECTION_MQTT, constants.MQTT_TOPIC, topic)
+
+        elif choice == 4:
+            # Change payload format
+            print("""Payload is in Python string.format() syntax.
+Available variables:
+* timestamp: Time stamp of the vote (in seconds)
+* nfc_uid: UID of the NFC tag
+* value: Value of the vote
+* vote_id: Vote ID found in tag data (**DEPRECATED**)
+""")
+            payload = prompt("MQTT Payload format ({0})"\
+                             .format(constants.MQTT_PAYLOAD_DEFAULT)) \
+                         or constants.MQTT_PAYLOAD_DEFAULT
+
+            self.config.set(constants.SECTION_MQTT, constants.MQTT_PAYLOAD,
+                            payload)
 
         return True
 

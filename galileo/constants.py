@@ -38,6 +38,10 @@ MQTT_PORT_DEFAULT = 1883
 MQTT_TOPIC = "topic"
 MQTT_TOPIC_DEFAULT = "vote"
 
+# ... MQTT payload
+MQTT_PAYLOAD = "payload"
+MQTT_PAYLOAD_DEFAULT = "{timestamp},{nfc_uid},{value}"
+
 # ... values in the vote (comma-separated list)
 VOTE_VALUES = "values"
 VOTE_VALUES_DEFAULT = (0, 1, 2)
