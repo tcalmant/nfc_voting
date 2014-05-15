@@ -123,19 +123,50 @@ class VoteLED(object):
         for value, pins in values_pins.items():
             if isinstance(pins, (tuple, list)):
                 # Copy the given values
-                self.pins[value] = tuple(pins)
+                value_pins = tuple(pins)
             else:
                 # Ensure we have a tuple
-                self.pins[value] = tuple(pins,)
+                value_pins = tuple(pins,)
 
-            # TODO: setup GPIO
+            # Store pins
+            self.pins[value] = value_pins
+
+            # Setup GPIO
+            for pin in value_pins:
+                try:
+                    # ... Export
+                    with open("/sys/class/gpio/export", "w") as fp:
+                        fp.write(str(pin))
+
+                    # ... Output mode
+                    with open("/sys/class/gpio/gpio{0}/direction".format(pin),
+                              "w") as fp:
+                        fp.write("out")
+
+                except IOError as ex:
+                    logging.warning("Error configuring pin %s: %s", pin, ex)
+
 
     def close(self):
         """
         Cleans up the GPIO pins
         """
-        # TODO: tear down GPIO
-        pass
+        # Clear storage
+        all_pins = set()
+        for value_pins in self.pins.values():
+            all_pins.update(value_pins)
+        self.pins.clear()
+
+        # Unexport all pins
+        all_pins = set(self.pins.values())
+        for pin in all_pins:
+            try:
+                # ... Unexport
+                with open("/sys/class/gpio/unexport", "w") as fp:
+                    fp.write(str(pin))
+
+            except IOError as ex:
+                logging.warning("Error unexporting pin %s: %s", pin, ex)
 
 
     def _led_change(self, pin, state):
@@ -145,13 +176,17 @@ class VoteLED(object):
         :param pin: LED pin
         :param state: If True, lights up, else lights down
         """
-        # TODO: replace with GPIO
-        if state:
-            state_str = "UP"
-        else:
-            state_str = "DOWN"
+        # Compute GPIO value
+        state_str = "1" if state else "0"
+        logging.debug("[[ pin %s -> %s ]]", pin, state_str)
 
-        logging.debug("[[ pin %s %s ]]", pin, state_str)
+        try:
+            # ... Update value
+            with open("/sys/class/gpio/gpio{0}/value".format(pin), "w") as fp:
+                fp.write(state_str)
+
+        except IOError as ex:
+            logging.warning("Error setting value of pin %s: %s", pin, ex)
 
 
     def valid(self, value, state):
