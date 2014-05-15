@@ -17,7 +17,7 @@ import pelix.misc.mqtt_client as mqtt
 import usb
 
 # NFCpy
-import nfc
+import nfc.dev
 
 # Standard library
 import functools
@@ -27,23 +27,24 @@ import time
 
 # ------------------------------------------------------------------------------
 
-def nfc_device_lookup(nfc_dev=(0x04E6, 0x5591)):
+def nfc_device_lookup():
     """
-    Looks for known NFC devices
+    Looks for usable NFC devices
 
-    :param nfc_dev: A USB device identification tuple
-                    (vendor, product)
-    :return: A list of (bus, device) tuples for connected devices
+    :return: A list of (bus, device) tuples for connected NFC devices
     """
+    # Matching devices
     matching = []
+
+    # Usable devices vendor and product IDs
+    usable_devs = set(nfc.dev.usb_device_map.keys())
 
     # For each USB bus
     for bus in usb.busses():
         # For each device
         for dev in bus.devices:
             # Check if the device matches the USB identifier
-            usb_ident = (dev.idVendor, dev.idProduct)
-            if usb_ident == nfc_dev:
+            if (dev.idVendor, dev.idProduct) in usable_devs:
                 matching.append((bus.dirname, dev.filename))
 
     return matching
