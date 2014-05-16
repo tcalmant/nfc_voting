@@ -160,6 +160,9 @@ class VoteLED(object):
         # Unexport all pins
         for pin in all_pins:
             try:
+                # ... Light down
+                self._led_change(pin, False)
+
                 # ... Unexport
                 with open("/sys/class/gpio/unexport", "w") as fp:
                     fp.write(str(pin))
