@@ -126,7 +126,7 @@ class VoteLED(object):
                 value_pins = tuple(pins)
             else:
                 # Ensure we have a tuple
-                value_pins = tuple(pins,)
+                value_pins = (pins,)
 
             # Store pins
             self.pins[value] = value_pins
@@ -158,7 +158,6 @@ class VoteLED(object):
         self.pins.clear()
 
         # Unexport all pins
-        all_pins = set(self.pins.values())
         for pin in all_pins:
             try:
                 # ... Unexport
