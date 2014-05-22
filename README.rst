@@ -16,11 +16,12 @@ Amine ZIAN­CHERIF during their Master 2 at
 Grenoble.
 
 
-.. note:: The `original README file <README.original.md>`_ (in French)
-   describes the architecture of the project.
+The `original README file <README.original.md>`_ (in French) describes the
+architecture of the project.
 
-.. note:: The original project is available at
-   `twane/nfc_voting <https://github.com/twane/nfc_voting>`_
+The original project is available at
+`twane/nfc_voting <https://github.com/twane/nfc_voting>`_
+
 
 Dependencies
 ************
@@ -31,6 +32,7 @@ Galileo
 For the Galileo you need to use a Linux distribution (not the built-in one).
 
 * Python
+* `PyUSB <http://sourceforge.net/apps/trac/pyusb/>`_
 * `Python-nfcpy <https://launchpad.net/nfcpy>`_
 * `Paho Python MQTT Client <http://www.eclipse.org/paho/>`_
 * `Pelix/iPOPO <https://ipopo.coderxpress.net>`_
@@ -38,7 +40,7 @@ For the Galileo you need to use a Linux distribution (not the built-in one).
 Server
 ======
 
-.. note:: The server part is not maintained in this fork
+**WARNING:** The server part is not maintained in this fork
 
 * Python
 * Python-nfcpy
@@ -90,6 +92,9 @@ NFC readers can be plugged once the system has been configured.
 Voting Machine
 ==============
 
+**WARNING:** Set up the date time on the Galileo before starting the
+installation. An incorrect time will prevent HTTPS downloads by wget and pip.
+
 Go in some directory on the Galileo's SD card and run the following commands:
 
 .. code-block:: bash
@@ -106,6 +111,12 @@ Go in some directory on the Galileo's SD card and run the following commands:
 
    # Pelix/iPOPO
    pip install iPOPO
+   
+   # libusb (0.1.4 or 1.0.0)
+   opkg install libusb-1.0-0
+   
+   # PyUSB (1.x): --pre stands for pre-release: PyUSB 1.0 is still in beta
+   pip install --pre pyusb
 
    # nfcpy
    wget https://launchpad.net/nfcpy/0.9/0.9.1/+download/nfcpy-0.9.1.tar.gz
