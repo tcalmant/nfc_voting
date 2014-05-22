@@ -243,16 +243,16 @@ Available variables:
         """
         LEDs configuration
         """
-        # Get vote values
+        # Get vote values (as a list)
         values = self.config.getlist(constants.SECTION_VOTE,
                                      constants.VOTE_VALUES,
                                      constants.VOTE_VALUES_DEFAULT)
 
         # Get LEDs
         value_leds = {}
-        for value in values:
+        for idx, value in enumerate(values):
             value_leds[value] = self.config.get(constants.SECTION_LEDS,
-                                                value, "")
+                                                str(idx), "")
 
         # Print menu
         choices = [(0, "Back to vote menu")]
@@ -266,11 +266,11 @@ Available variables:
 
         else:
             # Change LEDs for value
-            value = choice - 1
+            idx = choice - 1
             leds = prompt("LEDs pins (green, red): ")
             leds = ','.join(led.strip()
                             for led in leds.split(',') if led.strip())
-            self.config.set(constants.SECTION_LEDS, str(value), leds)
+            self.config.set(constants.SECTION_LEDS, str(idx), leds)
 
         return True
 

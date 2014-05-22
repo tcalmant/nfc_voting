@@ -590,9 +590,9 @@ def main(config):
 
     # Get LEDs configuration
     value_leds = {}
-    for value in values:
+    for idx, value in enumerate(values):
         value_leds[value] = tuple(int(pin) for pin \
-                    in config.getlist(constants.SECTION_LEDS, str(value), []))
+                    in config.getlist(constants.SECTION_LEDS, str(idx), []))
 
     # Get MQTT configuration
     host = config.get(constants.SECTION_MQTT, constants.MQTT_HOST,
