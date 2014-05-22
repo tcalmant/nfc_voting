@@ -43,8 +43,8 @@ def nfc_device_lookup():
         """
         return (dev.idVendor, dev.idProduct) in usable_devs
 
-    # Return a tuple of 3 hexadecimal digits strings
-    out_str = '{0:03x}'
+    # Return a tuple of 3 decimal digits strings
+    out_str = '{0:03d}'
     return [(out_str.format(dev.bus), out_str.format(dev.address))
             for dev in usb.core.find(True, custom_match=nfc_match)]
 
