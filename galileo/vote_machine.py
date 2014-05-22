@@ -13,8 +13,8 @@ import constants
 # Pelix MQTT client (based on Paho)
 import pelix.misc.mqtt_client as mqtt
 
-# libusb Python binding
-import usb
+# PyUSB (1.x)
+import usb.core
 
 # NFCpy
 import nfc.dev
@@ -33,21 +33,20 @@ def nfc_device_lookup():
 
     :return: A list of (bus, device) tuples for connected NFC devices
     """
-    # Matching devices
-    matching = []
-
-    # Usable devices vendor and product IDs
+    # Known devices vendor and product IDs
     usable_devs = set(nfc.dev.usb_device_map.keys())
 
-    # For each USB bus
-    for bus in usb.busses():
-        # For each device
-        for dev in bus.devices:
-            # Check if the device matches the USB identifier
-            if (dev.idVendor, dev.idProduct) in usable_devs:
-                matching.append((bus.dirname, dev.filename))
+    # USB lookup filter
+    def nfc_match(dev):
+        """
+        Checks if the given device has known identifiers
+        """
+        return (dev.idVendor, dev.idProduct) in usable_devs
 
-    return matching
+    # Return a tuple of 3 hexadecimal digits strings
+    out_str = '{0:03x}'
+    return [(out_str.format(dev.bus), out_str.format(dev.address))
+            for dev in usb.core.find(True, custom_match=nfc_match)]
 
 # ------------------------------------------------------------------------------
 
