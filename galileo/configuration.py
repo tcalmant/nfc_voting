@@ -78,7 +78,7 @@ class Configuration(object):
         :param filename: The configuration file name
         """
         try:
-            with open(self.__config_file, "w") as fp:
+            with open(filename, "w") as fp:
                 self.config.write(fp)
 
         except IOError as ex:
