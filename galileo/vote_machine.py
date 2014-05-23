@@ -133,7 +133,8 @@ class VoteMachine(object):
             raise ValueError("Not enough NFC devices found")
 
         _logger.info("Values: %s", self.__values)
-        _logger.info("NFC devices: %s", nfc_devices)
+        _logger.info("NFC devices: %s",
+                     ', '.join(str(dev) for dev in nfc_devices))
 
         # vote value -> VoteDevice
         value_device = self.__associate(nfc_devices)
@@ -167,7 +168,7 @@ class VoteMachine(object):
 
             # Associate a device
             _logger.info("Waiting for a tag...")
-            device = self.__wait_tag(remaining_devices)
+            device = self._nfc.wait_any_tag(remaining_devices)
             value_device[value] = device
             _logger.info("Using tag: %s", device)
 
