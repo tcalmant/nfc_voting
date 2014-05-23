@@ -9,6 +9,7 @@ Generates the configuration of the vote machine
 
 # Configuration constants
 import constants
+import configuration
 
 try:
     # Python 2
@@ -29,7 +30,8 @@ class ConfigurationMenu(object):
         Set up members
         """
         # Parse existing configuration
-        self.config = constants.Configuration()
+        self.config = configuration.Configuration()
+        self.config.load()
 
         # List of screens
         self.main_screen_name = "Main menu"
@@ -51,7 +53,10 @@ class ConfigurationMenu(object):
 
         while True:
             choice = prompt("Selection: ").strip()
-            if choice not in str_keys:
+            if not choice:
+                # Empty string: no need for a message
+                pass
+            elif choice not in str_keys:
                 print("Unknown choice: '{0}'".format(choice))
             else:
                 return choice
