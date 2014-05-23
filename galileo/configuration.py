@@ -52,6 +52,7 @@ class Configuration(object):
         # Dirty configuration flag
         self.__dirty = False
 
+
     @property
     def dirty(self):
         """
@@ -182,7 +183,9 @@ class _Activator(object):
         """
         Bundle started: registers the service
         """
+        # Prepare the service and load the existing configuration
         self.service = Configuration()
+        self.service.load()
         self.registration = context.register_service(
                                              constants.SERVICE_CONFIGURATION,
                                              self.service, {})
